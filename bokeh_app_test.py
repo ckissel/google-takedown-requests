@@ -2,6 +2,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 import numpy as np
+from pandas import read_pickle
+from data_utils import DisplayEntity
 
 from CDSBuilder import buildsource
 
@@ -13,28 +15,29 @@ from bokeh.server.utils.plugins import object_page
 from bokeh.models.widgets import HBox, Slider, TextInput, VBoxForm
 
 #TEST DATA
-class entity:
-    'entity objects'
-    def __init__(self,name,category,size):
-        self.name=name
-        self.category=category
-        self.size=size
-        self.x=None
-        self.y=None
-        self.width=1
-        self.alpha=1
-class Display_Entity:
-    'display entity'
-    def __init__(self,center,outer):
-        self.center=center
-        self.outer=outer
-fox=entity("fox","requester",20)
-cnn=entity("cnn","requester",30)
-bbc=entity("bbc","requester",15)
+# class entity:
+#     'entity objects'
+#     def __init__(self,name,category,size):
+#         self.name=name
+#         self.category=category
+#         self.size=size
+#         self.x=None
+#         self.y=None
+#         # self.width=1
+#         # self.alpha=1
+# class Display_Entity:
+#     'display entity'
+#     def __init__(self,center,outer):
+#         self.center=center
+#         self.outer=outer
+# fox=entity("fox","requester",[20,10,2,40,21])
+# cnn=entity("cnn","requester",[30,4,2,40,31])
+# bbc=entity("bbc","requester",[15,14,20,90,2])
 
-steve=entity("steve","target",21)
+# steve=entity("steve","target",21)
 
-DE=Display_Entity(steve,[fox,cnn,bbc])
+DE=read_pickle('first_hundred.p')
+
 
 class TestSliderApp(HBox):
 	"""
@@ -68,11 +71,12 @@ class TestSliderApp(HBox):
 		source, x_range, y_range = buildsource(DE)
 		# obj.source = ColumnDataSource(data=dict(x=[], y=[]))
 		obj.source = source
+		print 'DICKBUTT', source.data
 
-		obj.line_height = Slider(title="line_height", name="line_height", value=1.0, start=0.0, end=5.0, step=0.1)
+		obj.line_height = Slider(title="Request Type", name="line_height", value=0, start=0, end=1, step=1)
 
 		# plot = figure(plot_height=400, plot_width=400, title='herpderp', x_range=[0, 5], y_range=[0, 5])
-		plot = figure(title="Takedown Visualization for ", tools="hover", x_range=[-50,50], y_range=[-50,50], plot_width=800, plot_height=800)
+		plot = figure(title="Takedown Visualization for Fox (2014)", tools="hover,wheel_zoom", x_range=x_range, y_range=y_range, plot_width=800, plot_height=800)
 
 		plot.grid.grid_line_color = None
 		plot.axis.axis_line_color = None
@@ -84,25 +88,35 @@ class TestSliderApp(HBox):
 		# plot.line('x', 'y', source=obj.source, line_width=3)
 		
 		#build line web lists
-		def joinit(iterable, delimiter):
-			result=[]
-			for item in iterable:
-				result.append(item)
-				result.append(delimiter)
-			return result
-		linex=joinit(obj.source.data['xcoords'],0.0)
-		liney=joinit(obj.source.data['ycoords'],0.0)
+		# def joinit(iterable, delimiter):
+		# 	result=[]
+		# 	for item in iterable:
+		# 		result.append(item)
+		# 		result.append(delimiter)
+		# 	return result
+		# linex=joinit(obj.source.data['xcoords'],0.0)
+		# liney=joinit(obj.source.data['ycoords'],0.0)
+		# linewidths=joinit(obj.source.data['widths'],0.0)
 
-		plot.line(x=linex,y=liney,line_width=1)
+		linex=[]
+		liney=[]
+		for i in range(len(obj.source.data['xcoords'])):
+			linex.append([0,obj.source.data['xcoords'][i]])
+			liney.append([0,obj.source.data['ycoords'][i]])
 
+		
+
+		plot.multi_line(xs=linex, ys=liney, color='green')
+		
 		plot.circle(source=obj.source, x='xcoords', y='ycoords', color='colors', size='sizes')
+		plot.circle(x=[0],y=[0],color='blue',size=30)
 
 		#Tooltips
 		hover = plot.select(dict(type=HoverTool))
 		hover.tooltips = [
 		('Name','@names'),
-		('Amount','@widths'),
-		('Failure Rate', '@alphas')
+		('Take-Down Requests','@sizes'),
+		('X-Coordinate', '@xcoords')
 		]
 
 		obj.plot = plot
@@ -142,15 +156,28 @@ class TestSliderApp(HBox):
 		"""
 		herpderp
 		"""
-		N = 200
+		# N = 200
 
 		v = self.line_height.value  # the current value of the line height slider
 
-		x = np.linspace(0, 5, N)
-		y = np.linspace(v, v, N)
+		# x = np.linspace(0, 5, N)
+		# y = np.linspace(v, v, N)
 
 		# self.source.data = dict(x=x, y=y)
-		self.source = buildsource(DE)[0]
+		# source, x_range, y_range = buildsource(DE)
+		newSize=[]
+		for entity in DE.outer:
+			newSize.append(int(np.sqrt(entity.size[v])))
+		self.source.data = dict(names=self.source.data['names'],
+			xcoords=self.source.data['xcoords'],
+			ycoords=self.source.data['ycoords'],
+			colors=self.source.data['colors'],
+			sizes=newSize
+			)
+			# widths=newWidth,
+			# alphas=self.source.data['alphas'])
+
+
 
 @bokeh_app.route('/bokeh/sliders/')
 @object_page("sin")

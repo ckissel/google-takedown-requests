@@ -14,7 +14,7 @@ def genpositions(n,r): #takes in a number of positions to be generated
 def buildsource(DE):
     
     items=len(DE.outer)
-    maxsize=max(entity.size for entity in DE.outer)
+    maxsize=max(max(entity.size) for entity in DE.outer)
     r=((maxsize*2*1.1)*items)/(2*np.pi) #radius is circle diameter + breathing room times amount of items/2pi
     points=genpositions(items,r)
     xs=points[0]
@@ -33,6 +33,12 @@ def buildsource(DE):
     ycoords=[]
     colors=[]
     sizes=[]
+
+    # max_size = max([ent.size[0] for ent in DE.outer])
+    # min_size = min([ent.size[0] for ent in DE.outer])
+    # norm_range = max_size - min_size
+    # print "LOOK AT ME", max_size, min_size, norm_range
+
     #populate list from objects
     for entity in DE.outer:
         names.append(entity.name)
@@ -42,16 +48,16 @@ def buildsource(DE):
             colors.append('blue')
         if entity.category == 'target':
             colors.append('orange')
-        sizes.append(entity.size)
+        sizes.append(int(np.sqrt(entity.size[0])))
     #do it for the center too:
-    names.append(DE.center.name)
-    xcoords.append(DE.center.x)
-    ycoords.append(DE.center.y)
-    if DE.center.category == 'requester':
-        colors.append('blue')
-    if DE.center.category == 'target':
-        colors.append('orange')
-    sizes.append(DE.center.size)
+    # names.append(DE.center.name)
+    # xcoords.append(DE.center.x)
+    # ycoords.append(DE.center.y)
+    # if DE.center.category == 'requester':
+    #     colors.append('blue')
+    # if DE.center.category == 'target':
+    #     colors.append('orange')
+    # sizes.append(DE.center.size)
 
 
     
@@ -62,8 +68,8 @@ def buildsource(DE):
             ycoords=ycoords,
             colors=colors,
             sizes=sizes,
-            widths=[entity.width for entity in DE.outer],
-            alphas=[entity.alpha for entity in DE.outer]
+            # widths=[entity.width for entity in DE.outer],
+            # alphas=[entity.alpha for entity in DE.outer]
         )
     )
     x_range=[min(xcoords)-maxsize-5,max(xcoords)+maxsize+5] 
