@@ -116,7 +116,7 @@ class TestSliderApp(HBox):
 		hover.tooltips = [
 		('Name','@names'),
 		('Take-Down Requests','@sizes'),
-		('X-Coordinate', '@xcoords')
+		# ('X-Coordinate', '@xcoords')
 		]
 
 		obj.plot = plot
