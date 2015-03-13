@@ -1,9 +1,6 @@
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 import numpy as np
 from pandas import read_pickle
-from data_utils import DisplayEntity
+from entities import DisplayEntity  # imported so the pickle file doesn't cry
 
 from CDSBuilder import buildsource
 
@@ -12,9 +9,9 @@ from bokeh.models import Plot, ColumnDataSource, HoverTool
 from bokeh.properties import Instance
 from bokeh.server.app import bokeh_app
 from bokeh.server.utils.plugins import object_page
-from bokeh.models.widgets import HBox, Slider, TextInput, VBoxForm
+from bokeh.models.widgets import HBox, Slider, VBoxForm
 
-#TEST DATA
+# TEST DATA
 # class entity:
 #     'entity objects'
 #     def __init__(self,name,category,size):
@@ -36,151 +33,134 @@ from bokeh.models.widgets import HBox, Slider, TextInput, VBoxForm
 
 # steve=entity("steve","target",21)
 
-DE=read_pickle('first_hundred.p')
+# Unpickle the file containing a DisplayEntity object for the first hundred domains of the Fox data
+DE = read_pickle('first_hundred.p')
 
 
 class TestSliderApp(HBox):
-	"""
-	Our test app based on the bokeh slider app example.
-	Inherits from HBox, whatever that is.
-	It's going to change the height of a line!
-	"""
-	extra_generated_classes = [["TestSliderApp", "TestSliderApp", "HBox"]]
+    """
+    Our test app based on the bokeh slider app example.
+    All of this code is based on https://github.com/bokeh/bokeh/blob/master/examples/app/sliders_applet/sliders_app.py
+    """
+    extra_generated_classes = [["TestSliderApp", "TestSliderApp", "HBox"]]
 
-	# the form for our input (its children will be the actual inputs)
-	inputs = Instance(VBoxForm)
+    # the form for our input (its children will be the actual inputs)
+    inputs = Instance(VBoxForm)
 
-	# make an instance of the Slider object
-	line_height = Instance(Slider)
+    # Slider object
+    request_type = Instance(Slider)
 
-	# make the plot instance
-	plot = Instance(Plot)
+    plot = Instance(Plot)
 
-	# ugh
-	source = Instance(ColumnDataSource)
+    # Data source for the plot
+    source = Instance(ColumnDataSource)
 
-	# I don't know why this is a class method
-	@classmethod
-	def create(cls):
-		"""
-		One-time creation of the app's objects.
-		"""
+    @classmethod
+    def create(cls):
+        """
+        One-time creation of the app's objects.
+        """
 
-		obj = cls()
+        obj = cls()
 
-		source, x_range, y_range = buildsource(DE)
-		# obj.source = ColumnDataSource(data=dict(x=[], y=[]))
-		obj.source = source
-		print 'DICKBUTT', source.data
+        # build a ColumnDataSource from the DisplayEntity object
+        source, x_range, y_range = buildsource(DE)
+        obj.source = source
 
-		obj.line_height = Slider(title="Request Type", name="line_height", value=0, start=0, end=1, step=1)
+        obj.request_type = Slider(title="Request Type", name="request_type", value=0, start=0, end=1, step=1)
 
-		# plot = figure(plot_height=400, plot_width=400, title='herpderp', x_range=[0, 5], y_range=[0, 5])
-		plot = figure(title="Takedown Visualization for Fox (2014)", tools="hover,wheel_zoom", x_range=x_range, y_range=y_range, plot_width=800, plot_height=800)
+        plot = figure(title="Takedown Visualization for Fox (2014)", tools="hover,wheel_zoom", x_range=x_range, y_range=y_range, plot_width=800, plot_height=800)
 
-		plot.grid.grid_line_color = None
-		plot.axis.axis_line_color = None
-		plot.axis.major_tick_line_color = None
-		plot.axis.major_label_text_font_size = "0pt"
+        plot.grid.grid_line_color = None
+        plot.axis.axis_line_color = None
+        plot.axis.major_tick_line_color = None
+        plot.axis.major_label_text_font_size = "0pt"
 
+        # build line web lists
+        # def joinit(iterable, delimiter):
+        #     result=[]
+        #     for item in iterable:
+        #         result.append(item)
+        #         result.append(delimiter)
+        #     return result
+        # linex=joinit(obj.source.data['xcoords'],0.0)
+        # liney=joinit(obj.source.data['ycoords'],0.0)
+        # linewidths=joinit(obj.source.data['widths'],0.0)
 
+        linex = []
+        liney = []
+        for i in range(len(obj.source.data['xcoords'])):
+            linex.append([0, obj.source.data['xcoords'][i]])
+            liney.append([0, obj.source.data['ycoords'][i]])
 
-		# plot.line('x', 'y', source=obj.source, line_width=3)
-		
-		#build line web lists
-		# def joinit(iterable, delimiter):
-		# 	result=[]
-		# 	for item in iterable:
-		# 		result.append(item)
-		# 		result.append(delimiter)
-		# 	return result
-		# linex=joinit(obj.source.data['xcoords'],0.0)
-		# liney=joinit(obj.source.data['ycoords'],0.0)
-		# linewidths=joinit(obj.source.data['widths'],0.0)
+        plot.multi_line(xs=linex, ys=liney, color='green')
 
-		linex=[]
-		liney=[]
-		for i in range(len(obj.source.data['xcoords'])):
-			linex.append([0,obj.source.data['xcoords'][i]])
-			liney.append([0,obj.source.data['ycoords'][i]])
+        plot.circle(source=obj.source, x='xcoords', y='ycoords', color='colors', size='sizes')
+        plot.circle(x=[0], y=[0], color='blue', size=30)
 
-		
+        # Tooltips
+        hover = plot.select(dict(type=HoverTool))
+        hover.tooltips = [
+            ('Name','@names'),
+            ('Take-Down Requests','@numbers')
+        ]
 
-		plot.multi_line(xs=linex, ys=liney, color='green')
-		
-		plot.circle(source=obj.source, x='xcoords', y='ycoords', color='colors', size='sizes')
-		plot.circle(x=[0],y=[0],color='blue',size=30)
+        obj.plot = plot
+        obj.update_data()
 
-		#Tooltips
-		hover = plot.select(dict(type=HoverTool))
-		hover.tooltips = [
-		('Name','@names'),
-		('Take-Down Requests','@sizes'),
-		# ('X-Coordinate', '@xcoords')
-		]
+        obj.inputs = VBoxForm(children=[obj.request_type])
 
-		obj.plot = plot
-		obj.update_data()
+        # no idea why this is necessary
+        obj.children.append(obj.inputs)
+        obj.children.append(obj.plot)
 
-		obj.inputs = VBoxForm(children=[obj.line_height])
+        return obj
 
-		# no idea why this is necessary
-		obj.children.append(obj.inputs)
-		obj.children.append(obj.plot)
+    def setup_events(self):
+        """
+        Attaches the on_change event to the value property.
+        """
 
-		return obj
+        property_name = 'value'
+        callback_name = 'input_change'
 
-	def setup_events(self):
-		"""
-		Attaches the on_change event to the value property.
-		"""
+        # what even
+        super(TestSliderApp, self).setup_events()
+        if not self.request_type:
+            return
+        self.request_type.on_change(property_name, self, callback_name)
 
-		property_name = 'value'
-		callback_name = 'input_change'
+    def input_change(self, obj, attrname, old, new):
+        """
+        Executes whenever the slider is slid (i.e. "value" changes).
+        """
+        self.update_data()
 
-		# what even
-		super(TestSliderApp, self).setup_events()
-		if not self.line_height:
-			return
-		self.line_height.on_change(property_name, self, callback_name)
+    def update_data(self):
+        """
+        Modify the ColumnDataSource that provides data to the view.
+        """
 
-	def input_change(self, obj, attrname, old, new):
-		"""
-		Executes whenever the slider is slid (i.e. "value" changes).
-		"""
+        v = self.request_type.value  # the current value of the request type slider
 
-		
-		self.update_data()
-
-	def update_data(self):
-		"""
-		herpderp
-		"""
-		# N = 200
-
-		v = self.line_height.value  # the current value of the line height slider
-
-		# x = np.linspace(0, 5, N)
-		# y = np.linspace(v, v, N)
-
-		# self.source.data = dict(x=x, y=y)
-		# source, x_range, y_range = buildsource(DE)
-		newSize=[]
-		for entity in DE.outer:
-			newSize.append(int(np.sqrt(entity.size[v])))
-		self.source.data = dict(names=self.source.data['names'],
-			xcoords=self.source.data['xcoords'],
-			ycoords=self.source.data['ycoords'],
-			colors=self.source.data['colors'],
-			sizes=newSize
-			)
-			# widths=newWidth,
-			# alphas=self.source.data['alphas'])
-
+        newSize = []
+        numbers = []
+        for entity in DE.outer:
+            newSize.append(int(np.sqrt(entity.size[v])))
+            numbers.append(entity.size[v])
+        self.source.data = dict(names=self.source.data['names'],
+            xcoords=self.source.data['xcoords'],
+            ycoords=self.source.data['ycoords'],
+            colors=self.source.data['colors'],
+            sizes=newSize,
+            numbers=numbers
+        )
+        # widths=newWidth,
+        # alphas=self.source.data['alphas'])
 
 
 @bokeh_app.route('/bokeh/sliders/')
 @object_page("sin")
 def make_slider():
-	app = TestSliderApp.create()
-	return app
+    app = TestSliderApp.create()
+    return app
